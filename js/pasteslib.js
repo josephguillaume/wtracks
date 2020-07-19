@@ -228,6 +228,62 @@ function gofileUpload(name, gpx, onDone, onFail) {
 }
 
  // ------------------------------------------------------------------
+ // Solid Pod
+ // ------------------------------------------------------------------
+
+var solid_store, solid_fetcher;
+async function solidLogin(done, fail) {
+  if (typeof solid === "undefined")
+    await Promise.all([
+      new Promise((resolve, reject) =>
+        $.getScript("js/solid-auth-client.bundle.js")
+          .done(resolve)
+          .catch(reject)
+      ),
+      new Promise((resolve, reject) =>
+        $.getScript("js/rdflib.min.js").done(resolve).catch(reject)
+      )
+    ]);
+  solid_store = $rdf.graph();
+  solid_fetcher = new $rdf.Fetcher(solid_store);
+  let session = await solid.auth.currentSession();
+  let popupUri = "https://solid.community/common/popup.html";
+  if (!session) session = await solid.auth.popupLogin({ popupUri });
+  await solid_fetcher.load(session.webId);
+  if (done) session ? done() : fail();
+}
+
+async function solidUpload(name, gpx, onDone, onFail) {
+  await solidLogin();
+  let pim = solid_store.match(
+    null,
+    $rdf.sym("http://www.w3.org/ns/pim/space#storage"),
+    null
+  )[0].object.value;
+  // TODO: allow choosing path
+  let url = `${pim}public/geodata/${encodeURIComponent(name)}.gpx`;
+  solid.auth
+    .fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "text/xml" },
+      body: gpx
+    })
+    .then(function (resp) {
+      if (resp.ok) {
+        onDone(resp.url, resp.url);
+      } else {
+        onFail(resp.statusText);
+      }
+    })
+    .catch(onFail);
+}
+
+function solidDelete(url, rawurl, passcode, onDone, onFail) {
+  throw Error("solidDelete not implemented");
+}
+
+
+ // ------------------------------------------------------------------
  // Common
  // ------------------------------------------------------------------
 
@@ -325,5 +381,16 @@ var pastesLib = {
     "upload": gofileUpload,
     "ping": function(done, fail) { pingUrl("https://apiv2.gofile.io/getServer", done, fail); },
     "delete": noDelete
+  },
+  "solid":{
+    "name": "Solid Pod",
+    "enabled": true,
+    "web": "https://solidproject.org/use-solid/",
+    "maxSize": "Depends on your pod",
+    "maxTime": "Unlimited",
+    "maxDownloads": "Unlimited",
+    "upload": solidUpload,
+    "delete": solidDelete,
+    "ping": solidLogin
   }
 };

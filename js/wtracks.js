@@ -3109,6 +3109,16 @@ $(window).on("load", function() {
     );
   });
 
+  /*-- Solid --*/
+
+  // implemented as a share in pastesLib, but a Solid pod does belong to the user
+  // TODO: adapt the share dialog to reflect this difference
+  $("#solid-saver").click(function (e) {
+    selectOption(pasteLibSelect, "solid");
+    changeShareLib();
+    $("#track-share").click()
+  });
+
   /* ------------ */
 
   var MAX_ROUTE_WPTS = 2;
