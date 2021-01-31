@@ -232,18 +232,28 @@ function gofileUpload(name, gpx, onDone, onFail) {
  // ------------------------------------------------------------------
 
 var solid_store, solid_fetcher;
-async function solidLogin(done, fail) {
-  if (typeof solid === "undefined")
-    await Promise.all([
-      new Promise((resolve, reject) =>
-        $.getScript("js/solid-auth-fetcher.bundle.js")
-          .done(resolve)
-          .catch(reject)
-      ),
-      new Promise((resolve, reject) =>
-        $.getScript("js/rdflib.min.js").done(resolve).catch(reject)
-      )
-    ]);
+
+async function loadSolid(){
+  await Promise.all([
+    new Promise((resolve, reject) =>
+      $.getScript("js/solid-auth-fetcher.bundle.js")
+        .done(resolve)
+        .catch(reject)
+    ),
+    new Promise((resolve, reject) =>
+      $.getScript("js/rdflib.min.js").done(resolve).catch(reject)
+    )
+  ]);
+}
+
+async function solidPing(done,fail){
+  if (typeof solid === "undefined") await loadSolid();
+  let session = await solidAuthFetcher.getSession();
+  (session && session.loggedIn) ? done() : fail();    
+}
+
+async function solidLogin() {
+  if (typeof solid === "undefined") await loadSolid();
   solid_store = $rdf.graph();
   let session = await solidAuthFetcher.getSession();
   if (!session || !session.loggedIn) {
@@ -256,7 +266,10 @@ async function solidLogin(done, fail) {
   }
   solid_fetcher = new $rdf.Fetcher(solid_store, { fetch: session.fetch });
   await solid_fetcher.load(session.webId);
-  if (done) session ? done() : fail();
+}
+
+async function solidLogout(done, fail){
+    await solidAuthFetcher.logout();
 }
 
 async function solidUpload(name, gpx, onDone, onFail) {
@@ -397,6 +410,8 @@ var pastesLib = {
     "maxDownloads": "Unlimited",
     "upload": solidUpload,
     "delete": solidDelete,
-    "ping": solidLogin
+    "ping": solidPing,
+    "login":solidLogin,
+    "logout":solidLogout
   }
 };

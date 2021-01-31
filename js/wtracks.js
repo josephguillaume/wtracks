@@ -3909,10 +3909,43 @@ $(window).on("load", function() {
     $("#share-max-time").html(share.maxTime);
     $("#share-max-downloads").html(share.maxDownloads);
     $("#share-status").html("?");
+
+    async function login(){
+      await share.login();
+      changeShareLib();
+    }
+    async function logout(){
+      await share.logout();
+      changeShareLib();
+    }
+
     share.ping(
-      function() { $("#share-status").html("working <span class='green material-icons notranslate'>check_circle_outline</span>");},
-      function() { $("#share-status").html("NOT working <span class='red material-icons notranslate'>highlight_off</span>");}
+      function() { 
+        logout_button = share.logout ? `
+        <button class="shareLogout">Logout</button>
+        ` : ""
+        $("#share-status").html(`
+        working 
+        <span class='green material-icons notranslate'>
+        check_circle_outline
+        </span>
+        `+logout_button);
+        $(".shareLogout").on("click",logout);
+      },
+      function() { 
+        login_button = share.login ? `
+        <button class="shareLogin">Login</button>
+        ` : ""
+        $("#share-status").html(`
+        NOT working 
+        <span class='red material-icons notranslate'>
+        highlight_off
+        </span>
+        `+login_button);
+        $(".shareLogin").on("click",login);
+      }
     );
+
     // share prompt dialog
     $("#wtshare-name").text(share.name);
     $("#wtshare-web").attr("href", share.web);
