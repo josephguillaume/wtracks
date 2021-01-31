@@ -236,7 +236,7 @@ async function solidLogin(done, fail) {
   if (typeof solid === "undefined")
     await Promise.all([
       new Promise((resolve, reject) =>
-        $.getScript("js/solid-auth-client.bundle.js")
+        $.getScript("js/solid-auth-fetcher.bundle.js")
           .done(resolve)
           .catch(reject)
       ),
@@ -245,10 +245,16 @@ async function solidLogin(done, fail) {
       )
     ]);
   solid_store = $rdf.graph();
-  solid_fetcher = new $rdf.Fetcher(solid_store);
-  let session = await solid.auth.currentSession();
-  let popupUri = "https://solid.community/common/popup.html";
-  if (!session) session = await solid.auth.popupLogin({ popupUri });
+  let session = await solidAuthFetcher.getSession();
+  if (!session || !session.loggedIn) {
+    session = await solidAuthFetcher.login({
+      // TODO: UI to allow selection
+      oidcIssuer: "https://solidcommunity.net",
+      popUp: true,
+      popUpRedirectPath: "js/solid_popup.html"
+    });
+  }
+  solid_fetcher = new $rdf.Fetcher(solid_store, { fetch: session.fetch });
   await solid_fetcher.load(session.webId);
   if (done) session ? done() : fail();
 }
@@ -262,7 +268,7 @@ async function solidUpload(name, gpx, onDone, onFail) {
   )[0].object.value;
   // TODO: allow choosing path
   let url = `${pim}public/geodata/${encodeURIComponent(name)}.gpx`;
-  solid.auth
+  solidAuthFetcher
     .fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "text/xml" },
