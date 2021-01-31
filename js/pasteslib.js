@@ -280,7 +280,7 @@ async function solidUpload(name, gpx, onDone, onFail) {
     null
   )[0].object.value;
   // TODO: allow choosing path
-  let url = `${pim}public/geodata/${encodeURIComponent(name)}.gpx`;
+  let url = `${pim}public/geodata/gpx/${encodeURIComponent(name)}.gpx`;
   solidAuthFetcher
     .fetch(url, {
       method: "PUT",
