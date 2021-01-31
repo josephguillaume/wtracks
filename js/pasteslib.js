@@ -261,7 +261,7 @@ async function solidLogin() {
       // TODO: UI to allow selection
       oidcIssuer: "https://solidcommunity.net",
       popUp: true,
-      popUpRedirectPath: "js/solid_popup.html"
+      popUpRedirectPath: "wtracks/js/solid_popup.html"
     });
   }
   solid_fetcher = new $rdf.Fetcher(solid_store, { fetch: session.fetch });
