@@ -3949,6 +3949,7 @@ $(window).on("load", function() {
     share.ping(
       function() { 
         logout_button = share.logout ? `
+        ${share.loggedInText ? share.loggedInText() : ""}
         <button class="shareLogout">Logout</button>
         ` : ""
         $("#share-status").html(`

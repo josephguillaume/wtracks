@@ -249,12 +249,16 @@ async function loadSolid(){
 async function solidPing(done,fail){
   if (typeof solid === "undefined") await loadSolid();
   let session = await solidAuthFetcher.getSession();
-  (session && session.loggedIn) ? done() : fail();    
+  if(session && session.loggedIn){
+    await setupSolid();
+    done();
+  } else {
+    fail();
+  }
 }
 
 async function solidLogin() {
   if (typeof solid === "undefined") await loadSolid();
-  solid_store = $rdf.graph();
   let session = await solidAuthFetcher.getSession();
   if (!session || !session.loggedIn) {
     session = await solidAuthFetcher.login({
@@ -264,8 +268,35 @@ async function solidLogin() {
       popUpRedirectPath: "wtracks/js/solid_popup.html"
     });
   }
-  solid_fetcher = new $rdf.Fetcher(solid_store, { fetch: session.fetch });
-  await solid_fetcher.load(session.webId);
+  await setupSolid();
+}
+
+async function setupSolid(){
+  if(typeof solid_store === "undefined"){
+    solid_store = $rdf.graph();
+    let session = await solidAuthFetcher.getSession();
+    solid_fetcher = new $rdf.Fetcher(solid_store, { fetch: session.fetch });
+    await solid_fetcher.load(session.webId);
+  }
+}
+
+function getSolidPim(){
+  if(typeof solid_store==="undefined") return null;
+  return solid_store.match(
+    null,
+    $rdf.sym("http://www.w3.org/ns/pim/space#storage"),
+    null
+  )[0].object.value;
+}
+
+function solidLoggedInText(){
+  let pim = getSolidPim();
+  // TODO: allow choosing paths
+  let gpx_url = `${pim}public/geodata/gpx/`
+  let cfg_url = `${pim}private/wtracks.cfg`;
+  return `
+  [<a href="${gpx_url}">Gpx Store</a>] [<a href="${cfg_url}">Cfg</a>]
+  `
 }
 
 async function solidLogout(done, fail){
@@ -274,11 +305,7 @@ async function solidLogout(done, fail){
 
 async function solidUpload(name, gpx, onDone, onFail) {
   await solidLogin();
-  let pim = solid_store.match(
-    null,
-    $rdf.sym("http://www.w3.org/ns/pim/space#storage"),
-    null
-  )[0].object.value;
+  let pim = getSolidPim();
   // TODO: allow choosing path
   let url = `${pim}public/geodata/gpx/${encodeURIComponent(name)}.gpx`;
   solidAuthFetcher
@@ -301,11 +328,7 @@ async function solidUpload(name, gpx, onDone, onFail) {
 // TODO: allow specifying fileName and onFail
 async function solidLoadConfig(onDone) {
   await solidLogin();
-  let pim = solid_store.match(
-    null,
-    $rdf.sym("http://www.w3.org/ns/pim/space#storage"),
-    null
-  )[0].object.value;
+  let pim = getSolidPim();
   let url = `${pim}private/wtracks.cfg`;
   onFail = x=> console.error(x);
   solidAuthFetcher
@@ -323,11 +346,7 @@ async function solidLoadConfig(onDone) {
 // TODO: avoid duplication with solidUpload
 async function solidSaveConfig(txt, fileName, onDone, onFail) {
   await solidLogin();
-  let pim = solid_store.match(
-    null,
-    $rdf.sym("http://www.w3.org/ns/pim/space#storage"),
-    null
-  )[0].object.value;
+  let pim = getSolidPim();
   // TODO: allow choosing path
   let url = `${pim}private/${encodeURIComponent(fileName)}`;
   if(!onDone) onDone = x=>console.log(x);
@@ -464,6 +483,7 @@ var pastesLib = {
     "ping": solidPing,
     "login":solidLogin,
     "logout":solidLogout,
+    "loggedInText":solidLoggedInText,
     "saveConfig":solidSaveConfig,
     "loadConfig":solidLoadConfig
   }
