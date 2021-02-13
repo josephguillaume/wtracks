@@ -297,6 +297,57 @@ async function solidUpload(name, gpx, onDone, onFail) {
     .catch(onFail);
 }
 
+// TODO: avoid duplication with solidUpload
+// TODO: allow specifying fileName and onFail
+async function solidLoadConfig(onDone) {
+  await solidLogin();
+  let pim = solid_store.match(
+    null,
+    $rdf.sym("http://www.w3.org/ns/pim/space#storage"),
+    null
+  )[0].object.value;
+  let url = `${pim}private/wtracks.cfg`;
+  onFail = x=> console.error(x);
+  solidAuthFetcher
+    .fetch(url)
+    .then(function (resp) {
+      if (resp.ok) {
+        resp.json().then(onDone);
+      } else {
+        onFail(resp.statusText);
+      }
+    })
+    .catch(onFail);
+}
+
+// TODO: avoid duplication with solidUpload
+async function solidSaveConfig(txt, fileName, onDone, onFail) {
+  await solidLogin();
+  let pim = solid_store.match(
+    null,
+    $rdf.sym("http://www.w3.org/ns/pim/space#storage"),
+    null
+  )[0].object.value;
+  // TODO: allow choosing path
+  let url = `${pim}private/${encodeURIComponent(fileName)}`;
+  if(!onDone) onDone = x=>console.log(x);
+  if(!onFail) onFail = x=>console.error(x);
+  solidAuthFetcher
+    .fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "text/plain" },
+      body: txt
+    })
+    .then(function (resp) {
+      if (resp.ok) {
+        onDone(resp.url, resp.url);
+      } else {
+        onFail(resp.statusText);
+      }
+    })
+    .catch(onFail);
+}
+
 function solidDelete(url, rawurl, passcode, onDone, onFail) {
   throw Error("solidDelete not implemented");
 }
@@ -412,6 +463,8 @@ var pastesLib = {
     "delete": solidDelete,
     "ping": solidPing,
     "login":solidLogin,
-    "logout":solidLogout
+    "logout":solidLogout,
+    "saveConfig":solidSaveConfig,
+    "loadConfig":solidLoadConfig
   }
 };

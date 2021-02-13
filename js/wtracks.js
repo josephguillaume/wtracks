@@ -1875,16 +1875,26 @@ $(window).on("load", function() {
     var blob = new Blob([JSON.stringify(fullState)],
       isSafari() ? {type: "text/plain;charset=utf-8"} : {type: "application/json;charset=utf-8"}
     );
-    saveAs(blob, "wtracks.cfg");
+    let save_state_location = $("#save-state-location").val()
+    if(save_state_location=="file") {
+      saveAs(blob, "wtracks.cfg");
+    } else {
+      let saveConfig = pastesLib[save_state_location].saveConfig;
+      saveConfig(blob, "wtracks.cfg");
+    }
     ga('send', 'event', 'setting', 'export');
   }
 
   function loadStateFile(filedata) {
     var state;
-    try {
-      state = JSON.parse(filedata);
-    } catch (err) {
-      setStatus("Invalid file: " + err, { timeout: 5, class: "status-error" });
+    if(typeof filedata=="object"){
+      state = filedata
+    } else {
+      try {
+        state = JSON.parse(filedata);
+      } catch (err) {
+        setStatus("Invalid file: " + err, { timeout: 5, class: "status-error" });
+      }
     }
     objectForEach(state, function (name, value) {
       if (name.startsWith("wt.")) {
@@ -1910,9 +1920,15 @@ $(window).on("load", function() {
   $('#save-state-file').on('click', saveStateFile);
   $('#load-state-file').on('change', onStateFileSelect);
   $('#load-state-file').on('click', function (e) {
-    if (!confirm(
-        "This will override all your settings (maps, activities, etc.)\nContinue?"
-    )) {
+    let ok = confirm(
+      "This will override all your settings (maps, activities, etc.)\nContinue?"
+    );
+    // TODO: more elegant solution than overriding the file input?
+    let save_state_location = $("#save-state-location").val();
+    if (!ok) {
+      e.preventDefault();
+    } else if(save_state_location != "file"){
+      pastesLib[save_state_location].loadConfig(loadStateFile);
       e.preventDefault();
     }
   });
@@ -3900,6 +3916,12 @@ $(window).on("load", function() {
         addSelectOption(pasteLibSelect, name, pl.name);
       }
     });
+    let save_state_location = $("#save-state-location")[0];
+    objectForEach(pastesLib, function(name, pl) {
+      if (pl.saveConfig) {
+        addSelectOption(save_state_location, name, pl.name);
+      }
+    });
   }
   function changeShareLib(evt) {
     var libname = getSelectedOption(pasteLibSelect);
@@ -3909,6 +3931,11 @@ $(window).on("load", function() {
     $("#share-max-time").html(share.maxTime);
     $("#share-max-downloads").html(share.maxDownloads);
     $("#share-status").html("?");
+    
+    // Assumes that GPX save location is also likely to be export location
+    if(share.saveConfig){
+      selectOption($("#save-state-location"), libname);
+    }
 
     async function login(){
       await share.login();
